@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+     {% block content %}
+
+       <h1>你好呀, {{ user.username }} !</h1>
+
+        {% for post in posts %}
+            <div><p>{{ post.name }} 的综合得分为<b>{{ post.score }}</b></p></div>
+        {% endfor %}
+
+
+     {% endblock %}
