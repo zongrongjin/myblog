@@ -1,18 +1,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
-     <h1>登 录</h1>
-    <p>还没注册? <a href="{{ url_for('register') }}">点击一下就可以注册哦!</a></p>
     <form action="" method="post">
         {{ form.hidden_tag() }}
         <p>
-            {{ form.username.label }}<br>
-            {{ form.username(size=32) }}<br>
-            {% for error in form.username.errors %}
+            {{ form.user_email.label }}<br>
+            {{ form.user_email(size=32) }}
+            {% for error in form.user_email.errors %}
                 <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
 
         </p>
+        <input type="button" value="获取验证码"><br>
         <p>
             {{ form.password.label }}<br>
             {{ form.password(size=32) }}<br>
@@ -25,4 +24,4 @@
         <span><a href="{{url_for('reset_pwd')}}">忘记密码？<a></span>
         <p>{{ form.submit() }}</p>
     </form>
-{% endblock %}
+{% endblock  %}

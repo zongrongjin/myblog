@@ -100,3 +100,7 @@ def edit_profile():
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
     return render_template('edit_profile.html', title='个人资料编辑', form=form)
+
+@app.route('/reset_pwd', methods=['GET', 'POST'])
+def reset_pwd():
+    return render_template('reset_pwd.html', title='重置密码')
