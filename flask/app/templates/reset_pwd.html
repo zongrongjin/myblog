@@ -1,27 +1,5 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <form action="" method="post">
-        {{ form.hidden_tag() }}
-        <p>
-            {{ form.user_email.label }}<br>
-            {{ form.user_email(size=32) }}
-            {% for error in form.user_email.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-            {% endfor %}
-
-        </p>
-        <input type="button" value="获取验证码"><br>
-        <p>
-            {{ form.password.label }}<br>
-            {{ form.password(size=32) }}<br>
-            {% for error in form.password.errors %}
-                <span style="color: red;">[{{ error }}]</span>
-            {% endfor %}
-
-        </p>
-        <p>{{ form.remember_me() }} {{ form.remember_me.label }}</p>
-        <span><a href="{{url_for('reset_pwd')}}">忘记密码？<a></span>
-        <p>{{ form.submit() }}</p>
-    </form>
+    <h2>正在开发中...</h2>
 {% endblock  %}

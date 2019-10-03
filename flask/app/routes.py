@@ -7,6 +7,7 @@ from werkzeug.urls import url_parse
 from app import app, db
 from app.forms import EditProfileForm, LoginForm, RegistrationForm
 from app.models import User
+from config import article_list
 
 
 @app.route('/')
@@ -18,7 +19,7 @@ def index():
         {'name':'文章标题1', 'score':'缩略内容'},
         {'name':'文章标题2', 'score':'缩略内容'}
     ]
-    return render_template('index.html', posts=posts, title='Zong')
+    return render_template('index.html', posts=posts, title='Zong的博客')
 
 @app.route('/login',methods=['GET','POST'])
 def login():
@@ -78,7 +79,7 @@ def user(username):
         {'author':user,'body':'测试Post #2号'}
     ]
 
-    return render_template('user.html',user=user,posts=posts)
+    return render_template('user.html',user=user,posts=posts, title='用户中心')
 
 @app.before_request
 def before_request():
@@ -104,3 +105,23 @@ def edit_profile():
 @app.route('/reset_pwd', methods=['GET', 'POST'])
 def reset_pwd():
     return render_template('reset_pwd.html', title='重置密码')
+
+@app.route('/interface_list')
+@login_required
+def interface_list():
+    return render_template('interface_list.html', title='spider接口列表')
+
+@app.route('/zhihu')
+@login_required
+def zhihu():
+    return render_template('zhihu.html', title='爬虫进阶', posts=article_list)
+
+@app.route('/anjuke')
+@login_required
+def anjuke():
+    return render_template('anjuke.html', title='安居客爬虫解析')
+
+@app.route('/eleme')
+@login_required
+def eleme():
+    return render_template('eleme.html', title='饿了么爬虫解析')

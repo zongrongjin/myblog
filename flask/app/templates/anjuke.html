@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+a:visited {color:blue}
+body {height:100%; width:100%}
+.blog {text-align:left; width:50%; margin:0 auto}
+.code {background:black; color:white; white-space:pre-wrap; width:100%;}
+.img_box {width:100%; text-align:center; font-size:14px; color:gray}
+.warning {color:red; font-weight:bold}
+</style>
+<br><br><br>
+<div class="blog">
+<b>目标网站:</b><a href="https://www.anjuke.com/" target="_blank">https://www.anjuke.com/</a><br><br>
+<b>目标数据:</b>安居客所有新房/二手房/租房数据<br></br>
+<b>爬虫过程:</b>
+<div style="white-space:pre-wrap; width:100%">
+    第一步寻找数据来源。F12简单的抓个包，发现并没有用ajax，而是直接把数据放到了源码上。CTRL+U看下页面源码确定一下，果然所有数据都在里面写着，也没有什么稀奇古怪的加密，那我们只需要把它提取出来就ok了。
+    第二步就要分析网站的构造，设法提取完整的数据。在查询北京新房时，我们发现有1200套新房，刚好20页。
+<div class="img_box">
+<img src="{{ url_for('static', filename='images/anjuke_beijing_newhouse_page.png') }}">   
+安居客北京新房页码
+</div>
+    对于20、50、100这种页码我们应该很敏感，这时候就需要考虑一个问题，究竟是安居客一次只返回20页数据，必须通过筛选区域/价格等条件获得完整数据，还是说北京全部数据只有20页呢？为了解决这个问题，我们来看一下上海的页码数。
+<div class="img_box">
+<img src="{{ url_for('static', filename='images/anjuke_shanghai_newhouse_page.png') }}">
+安居客上海新房页码
+</div>
+    ok，原来是北京就20页，上海也就20多页，我们再看看深圳/广州，发现数据都不到50页，那我们就不必考虑筛选条件，可以放心的进行下一步了。
+    下一步是scrapy走起吗？No，我们用gevent和requests来做个简单的测试，随便找一个楼盘网页去异步请求它，来试试安居客面对大量请求时的反应。(<span class="warning">如果你们公司用的内网，请先设置代理ip再测试，以免整个公司网络都打不开安居客</span>)
+
+<div class="code">from gevent import monkey
+monkey.patch_all()
+
+import gevent
+import requests
+
+def get_anjuke(n):
+    url = 'https://bj.fang.anjuke.com/loupan/456479.html?from=AF_RANK_1'
+    res = requests.get(url)
+    print(n, res)
+
+gevent.joinall([gevent.spawn(get_anjuke, i) for i in range(1000)])
+</div>
+ok，运行一下看看结果。
+<div class="img_box">
+<img src="{{ url_for('static', filename='images/anjuke_test_code_res.png') }}">
+测试结果
+</div>
+可以看到不到一分钟就404了，我们打开安居客看一下。
+<div class="img_box">
+<img src="{{ url_for('static', filename='images/anjuke_ip_ban.png') }}">
+浏览器打开安居客
+</div>
+ip果然被ban了，好的，找到了反爬手段，我们就可以用scrapy写爬虫了。页面解析不必多说，以下是解决IP问题的代码：
+
+<div class="code">import random  
+import scrapy  
+import logging
+ 
+class ProxyMiddleWare(object):
+    def process_request(self, request, spider):
+        '''对request对象加上proxy'''
+        proxy = self.get_random_proxy()
+        logging.debug("this is request ip:" + proxy)
+        request.meta['proxy'] = proxy
+
+    def process_response(self, request, response, spider):
+        '''对返回的response处理'''
+        # 如果返回的response状态不是200，重新生成当前request对象
+        if response.status != 200:
+            proxy = self.get_random_proxy()
+            logging.debug("this is response ip:" + proxy)
+            # 对当前reque加上代理
+            request.meta['proxy'] = proxy
+            return request
+        return response
+
+    def get_random_proxy(self):
+        '''自定义方法，获取一个随机可用IP'''
+        proxy_list = get_proxy_list()
+        return random.choice(proxy_list)
+</div>
+    其中get_proxy_list方法为获取随机代理ip序列，一般从自己的ip池获取或是从代理网站提供的api获得，在此不再多说。注意的是这是一个简单的demo，真正在业务中使用的话，我们还需要将对该网站不可用的ip进行标记，获得代理ip时不使用这些ip以加快爬虫效率。
+    你以为这就结束了吗？当然不是的，在我们设置了代理ip后再去爬虫，会发现很多200状态码的页面中并没有抓取到数据，好的，我们用对应ip进入相应页面，然后发现了这个。
+<div class="img_box">
+<img src="{{ url_for('static', filename='images/anjuke_captcha.png') }}">
+反爬老朋友———滑动验证码
+</div>
+这时有四种方案解决：
+
+    1.遇到验证码直接更换ip。
+
+    2.中间件中加入selenium，并使用无头浏览器/谷歌无头来破解验证码。
+
+    3.破解验证码的js代码，模拟发送验证码验证的请求
+
+    4.对接打码平台
+
+第一种第四种成本最高，速度肯定比selenium快，第二种最常用，但是会比较慢（其实还可以），第三种和第一种差不多快，但是很耗费开发时间。这里给出第二种的简单demo：<a href="https://blog.csdn.net/da_zi_haha/article/details/98763306" target="_blank">点击此处</a>
+
+没有遇到验证码的请直接点击<a href="https://bj.fang.anjuke.com/xinfang/captchaxf-verify/?callback=shield&from=antispam&serialID=539587e726d86d8b4a410218045c40ec_94ee0dcfb2b247d3ba0d7c1968dbefb4&history=aHR0cDovL2JqLmZhbmcuYW5qdWtlLmNvbS8%2FZnJvbT1uYXZpZ2F0aW9u" target="_blank">这里</a>
+
+ok，新房爬虫搞定！二手房和租房同理，但要注意的是，<span class="warning">二手房和租房需要筛选条件后进行爬虫，否则每个城市只能获取到50页的数据</span>
+
+END!
+</div><br><br>
+<b>最终数据:</b><a href="/index">点击此处</a><br><br><br>
+
+本网站仅作学习交流之用，不做任何商业用途。如有侵权请联系vx:zongrongjin email:a1796932792@outlook.com，将立即处理相应内容<br><br>
+</div>
+{% endblock content %}

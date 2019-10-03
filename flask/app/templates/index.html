@@ -110,13 +110,21 @@
 	var backup = document.getElementById("backup");
 	var recover = document.getElementById("recover");
 	var empty = document.getElementById("empty");
-    var txt = question.replace(/我/g,"me");
+    /*var txt = question.replace(/我/g,"me");
 	var txt1 = txt.replace(/你/g,"我");
 	var txt2 = txt1.replace(/吗/g,"");
 	var txt3 = txt2.replace(/me/g,"你");
 	var txt4 = txt3.replace(/不/g,"极了");
 	var txt5 = txt4.replace(/？/g,"~");
-	var txt6 = txt5.replace(/谁/g,"KayaK-Z");
+	var txt6 = txt5.replace(/谁/g,"KayaK-Z");*/
+	if(question == "帮助" || question == "help"){
+		var txt6 = "本网站提供python与golang的一些爬虫接口、数据、工具以及一些进阶知识等，另外还要算法、数据结构之类的一些知识。输入关键词以获取相应内容（关键词在网页里寻找哦）";
+	} else if (url_json.hasOwnProperty(question)){
+		var txt6 = '已为你找到相应内容，点击<a href="' + url_json[question] + '">这里</a>跳转'
+	} else {
+		var txt6 = '暂未找到' + question + '相应内容，已将关键词提交至服务器，更新内容后会以邮件方式提醒您'
+	}
+	
 	var str = "";
                 if(question == ""){
 	                 // 消息为空时弹窗
@@ -139,9 +147,8 @@
 					empty.onclick=function(){win.innerHTML=""}
 					document.getElementById("question").value = "";//清空对话框
 				}
-            }
-  </script>
- <script>
+            };
+
 	function keylogin(){
 		if(event.keyCode==13)
 		document.getElementById("wen").click();
@@ -279,7 +286,8 @@
   <br><br>
   <input type="button" id="empty" value="清空聊天记录" title="未备份的聊天记录清空后无法恢复">
   <br><br>
-  <input type="button" id="quit" value="退出登录" title="退出登录自动清除聊天记录与备份" onclick="window.location.href='../聊天系统登录.html'">
-
-
+ <input type="button" id="quit" value="退出登录" title="退出登录自动清除聊天记录与备份" onclick="window.location.href='/logout'">
+  <script>
+  var url_json = {"网站":"/interface_list", "进阶":"/zhihu", "算法":"/math", "工具":"/tools"};
+  </script>
      {% endblock %}

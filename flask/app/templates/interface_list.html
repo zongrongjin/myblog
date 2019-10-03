@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+    {% block content %}
+        <h3>A:</h3>
+        <a href="{{url_for('anjuke')}}"><h4>安居客</h4></a>
+        <h3>E:</h3>
+        <a href="{{url_for('eleme')}}"><h4>饿了么</h4></a>
+        <h3>F:</h3>
+        <a href="{{url_for('index')}}"><h4>房天下</h4></a>
+        <h3>L:</h3>
+        <a href="{{url_for('index')}}"><h4>链家</h4></a>
+        <h3>M:</h3>
+        <a href="{{url_for('index')}}"><h4>马蜂窝</h4></a>
+        <h3>Q:</h3>
+        <a href="{{url_for('index')}}"><h4>去哪儿</h4></a>
+        <h3>R:</h3>
+        <a href="{{url_for('index')}}"><h4>人人车</h4></a>
+        <h3>X:</h3>
+        <a href="{{url_for('index')}}"><h4>携程</h4></a>
+        <h3>Y:</h3>
+        <a href="{{url_for('index')}}"><h4>艺龙</h4></a>
+        <h3>elses:</h3>
+        <a href="{{url_for('index')}}"><h4>12306</h4></a>
+    {% endblock content %}

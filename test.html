@@ -1,0 +1,178 @@
+<style>
+a:visited {color:blue}
+body {height:100%; width:100%}
+.blog {width:50%; margin:0 auto}
+.code {background:black; color:white; white-space:pre-wrap; width:100%;}
+.img_box {width:100%; text-align:center; font-size:14px; color:gray}
+.warning {color:red; font-weight:bold}
+</style>
+<div class="blog">
+<b>目标网站:</b><a href="https://h5.ele.me/" target="_blank">https://h5.ele.me/</a><br><br>
+<b>目标数据:</b>饿了么商户信息/菜品信息/评论内容<br></br>
+<b>爬虫过程:</b>
+<div style="white-space:pre-wrap; width:100%">
+    先打开chrome进入目标页面，F12切换为手机显示。
+
+    以上准备工作完成后，打开目标网址，会发现由于是pc端操作，网页无法获取你的个人位置，跳转到了选择位置的页面，这时候我们点击选择城市。得到如下界面：
+<div class="img_box">
+<img src="\static\images\ele_choose_city.png">
+选择城市
+</div>
+    看下chrome的抓包情况，找到全国城市的列表，无加密的get请求，第一步完成。
+<div class="img_box">
+<img src="\static\images\ele_get_city.png">
+city_list.json
+</div>
+    这里以广州为例，选择广州后返回主页发现并没有显示出餐厅信息，必须进一步选择详细地址。先随便选择一个广州塔吧，返回主页，已经可以看到餐厅信息了，这是我们再来看看抓包情况。
+<div class="img_box">
+<img src="\static\images\ele_rest_list.png">
+找到目标内容
+</div>
+    找到目标内容，来看看请求参数吧。
+<div class="img_box">
+<img src="\static\images\ele_rest_args1.png">
+请求头携带参数
+</div>
+<div class="img_box">
+<img src="\static\images\ele_rest_args2.png">
+url携带参数
+</div>
+    接下来我们需要知道哪些参数是不必要的，用一个简单的demo测试一下参数的必要性。
+
+<div class="code">import requests
+
+url = 'https://h5.ele.me/restapi/shopping/v3/restaurants?latitude=23.105302&longitude=113.324529&offset=0&limit=8&extras[]=activities&extras[]=tags&extra_filters=home&rank_id=&terminal=h5'
+headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Referer': 'https://h5.ele.me/',
+    'Sec-Fetch-Mode': 'cors',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1',
+    'X-Shard': 'loc=113.324529,23.105302, loc=113.324529,23.105302',
+    'x-uab': '120#bX1bSXCykUvSDMUEUS5rLzU//GzhyJ/ZUOmtZP+rGS9Z1O35pxnz91cSJ7RJ3DBjxogeL2ch5YGd56Y4qccqGzlCgP+n/o0JfW4KwoRRQ4c3necMw0sMbODCbjcyknLFlAPs0l7Saz+bNFYvSi5/ybbS7UGPWWl/oYk6yuYV7H+UYvxYg6ikmtf6RNdPTbjgTctmujuXJ7xsiVWT4xFp0fIy9AkuAE087fG2U9LS3VcQpBSpXk4hTf6ZjlhVCleev2URBzKfrIvuQOrnH7Mn7NDr1+qZxjw+Z66wshnm05eYcc9Hp8tKpSyMSQQ8m/N7r+rpYCLMHoIoS0hEkEMGjtYg5mrBtIcO7M4zUGWudSH+jrzqVIvHgVC58zL0ALONFBow0Nvhs0+Lxa9AoD9RIJ7ckbd8IxHPGeCar7PwzUtE3hu9aU2S820UsisR538GCLxQ6EgxJWyfKeEwL1xvnVzsd8Fk9I88245laEGjehJTF1Xmv2AinHwEyO57qfp='
+}
+a = requests.get(url, headers=headers).text
+with open('a1.txt', 'w', encoding='utf8') as f:
+    f.write(a)
+</div>
+    跑一下看看a1.txt，发现可以得到数据（当然先不要相信数据的真实，大公司最喜欢干数据投毒这种事儿了）。
+
+    我们再把一眼望去就知道是加过密的x-uab给注释掉，将结果写在另一个txt中，请求一下试试，之后对比两个txt与网页端返回内容，来判断是否为真实数据。
+    
+    就这样注释+对比，我们可以发现x-shard和x-uab都是可以不要的。返回的结果每次都不太一样，可是都是正确的数据（即无序返回）。那如果直接这样请求，不就得到了很多重复的结果吗？还有可能会遗漏数据。先不着急，我们下拉饿了么页面，继续往下看，发现下拉一定餐厅后，会重新发起一次get请求来获取新的餐厅，对比第一次的请求，我们发现只有offset（偏移量）和rank_id不同，第一次请求rank_id为空，之后都是一样的rank_id，我们猜测第一次请求后，服务端会将餐厅信息打乱放置到一个队列中，后面的请求用rank_id来访问这个队列，从而做到简单的反爬，那么rank_id一定是直接返回或者藏在js中的，我们来CTRL+F找一下rank_id，发现它就在第一次请求的返回值中，跟后面请求参数的rank_id一对比没有差别。ok，获取餐厅列表步骤完毕。
+    
+    接下来，我们点开餐厅的详情页。
+<div class="img_box">
+<img src="\static\images\ele_login.png">
+需要登录
+</div>
+    跳到了登录界面，那我们继续抓包，尝试模拟登录流程。点击获取验证码后，发现发出一条这样的请求。
+<div class="img_box">
+<img src="\static\images\ele_send_msg.png">
+获取验证码请求
+</div>
+    而response是一个这玩意儿：{"validate_token":"e878f834375bd9fdd878675072ed9c0dec4d3967df02e1e6993961c153285d88"}。不管它，输入验证码，点击登录，继续看请求。
+<div class="img_box">
+<img src="\static\images\ele_send_code.png">
+登录时提交的请求
+</div>
+    我们看到，这个validata_token就在上面返回的json内容中，因为我这里输入的123456，所以返回了错误的信息：{"message":"无效的验证令牌","name":"INVALID_VALIDATE_TOKEN"}。
+    
+    下面输入正确的验证码看看返回结果，这时发现用chrome点完登录就登录成功，跳转到其他页面，导致刚才的请求无法查看，因此我们需要打开抓包工具（比如fiddler），发现得到正确的短信验证码后这个接口返回了一个：{"need_bind_mobile":false,"user_id":1000015119358}。ok，登录成功，我们用个demo来模拟一下（<span class="warning">注意这两个post请求的请求体不是formdata，而是requests payload</span>）
+
+<div class="code">import requests
+import json
+
+headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Content-Type': 'application/json; charset=UTF-8',
+    'Origin': 'https://h5.ele.me',
+    'Referer': 'https://h5.ele.me/login/',
+    'Sec-Fetch-Mode': 'cors',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1'
+}
+
+phoneNum = input('请输入你的手机号,回车键确认:')
+# 模拟点击发送验证码请求
+send_msg_url = 'https://h5.ele.me/restapi/eus/login/mobile_send_code'
+send_msg_payloadData = {"mobile":phoneNum,"captcha_value":"","captcha_hash":"","scf":"ms"}
+res1 = requests.post(url=send_msg_url, data=json.dumps(send_msg_payloadData), headers=headers)
+token = res1.json()['validate_token']
+# 模拟登录请求
+send_msgCode_url = 'https://h5.ele.me/restapi/eus/login/login_by_mobile'
+my_code = input('请输入你的验证码,回车键确认:')
+send_msgCode_payloadData = {"mobile":phoneNum,"validate_code":my_code,"validate_token":token,"scf":"ms"}
+res2 = requests.post(url=send_msgCode_url, data=json.dumps(send_msgCode_payloadData), headers=headers)
+
+print(res2.text)
+</div>
+
+    运行一下看看结果。
+<div class="img_box">
+<img src="\static\images\ele_login_res.png">
+模拟登录结果
+</div>
+    没问题是没问题，可是我们发现，同一个ip多次请求发送短信验证码时就不会返回给你validate_token了，而是：{'message': '账户存在风险,需要图形验证码', 'name': 'NEED_CAPTCHA'}，我们打开chrome，果然要输入验证码。
+<div class="img_box">
+<img src="\static\images\ele_captcha.png">
+饿了么验证码
+</div>
+    那我们继续抓包，发现网页会自动发出一个post请求，请求体就是我们的手机号，返回值是captcha_hash（验证码哈希值）和captcha_image（验证码图片），当我们输入验证码后，又会有一个post请求携带着我们的手机号、验证码哈希值、我们输入的验证码发送请求，验证码正确就会返回validate_token。
+
+    弄明白这个过程后，再来一个demo，破解验证码。
+
+<div class="code">import requests
+import json
+import base64
+import io
+from PIL import Image
+
+headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Content-Type': 'application/json; charset=UTF-8',
+    'Origin': 'https://h5.ele.me',
+    'Referer': 'https://h5.ele.me/login/',
+    'Sec-Fetch-Mode': 'cors',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1'
+}
+
+phoneNum = input('请输入你的手机号,回车键确认:')
+# 模拟点击发送短信验证码请求
+send_msg_url = 'https://h5.ele.me/restapi/eus/login/mobile_send_code'
+send_msg_payloadData = {"mobile":phoneNum,"captcha_value":"","captcha_hash":"","scf":"ms"}
+res1 = requests.post(url=send_msg_url, data=json.dumps(send_msg_payloadData), headers=headers)
+print('res1:', res1)
+# 判断是否需要图形验证码，需要则模拟请求图形验证码
+if 'message' in res1.json():
+    getCaptcha_url = 'https://h5.ele.me/restapi/eus/v3/captchas'
+    getCaptcha_data = json.dumps({"captcha_str":phoneNum})
+    res2 = requests.post(url=getCaptcha_url, data=getCaptcha_data, headers=headers).json()
+    captcha_hash = res2['captcha_hash']
+    captcha_image = res2['captcha_image']
+    # 将字符串转化为二进制字节对象
+    captcha = base64.b64decode(captcha_image.split(',')[-1])
+    # 将字节对象转为Byte字节流数据,供Image.open使用
+    byte_stream = io.BytesIO(captcha)
+    Image.open(byte_stream).show()
+    captcha_code = input('请输入验证码，回车键确认:')
+    # 模拟发送图形验证码
+    sendCaptcha_data = {"mobile":phoneNum,"captcha_value":captcha_code,"captcha_hash":captcha_hash,"scf":"ms"}
+    res3 = requests.post(url=send_msg_url, data=json.dumps(sendCaptcha_data), headers=headers)
+    print(res3.json())
+</div>
+    跑一下看看结果。
+<div class="img_box">
+<img src="\static\images\ele_captcha_post.png">
+模拟图形验证码结果
+</div>
+    可以看到，验证码也搞定，不需要selenium即可实现自动登录~
+
+    接下来登录问题解决了吗？没有。实际操作中我们发现，登录后获取一定数据，账号就会被封禁。也就是说，我们需要大量账号，这个可以通过很多云短信平台解决。我们可以购买他们的接口获取短信，也可以自己写爬虫获取短信，具体不再赘述。而验证码问题，既可以通过代理ip解决，遇到验证码直接更换ip，也可能通过机器学习识别，这种常见的英文数字混合的验证码很好识别（同样，以后会在工具区给出模型+源码）。
+
+    现在登录问题才算真正解决，后面就是进入单个餐厅，抓取各种详细信息，不再涉及各种加密问题，过程相当简单，也就不再多说。
+
+    END!
+</div><br><br>
+<b>最终数据:</b><a href="/index">点击此处</a><br><br><br>
+
+本网站仅作学习交流之用，不做任何商业用途。如有侵权请联系vx:zongrongjin email:a1796932792@outlook.com，将立即处理相应内容<br><br>
+</div>

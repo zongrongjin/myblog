@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+body{height:100%; width:100%}
+div{margin:0 auto}
+u {color:red;}
+li {text-align:left;}
+</style>
+<br>
+<br>
+<div style="width:40%"><ul>
+    {% for post in posts %}
+    <li>
+        <a href="{{post.url}}" style="font-size:110%">{{ post.title }}</a>
+        有用数(<u>{{post.useful}}</u>)
+    </li><br><br>
+    {% endfor %}
+</ul></div>
+{% endblock content %}
